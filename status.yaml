@@ -49,31 +49,6 @@
       debug:
         msg: "SID={{ oracle_sid }} is {{ db_state }}"
 
-    - name: size database
-      shell: |
-        sqlplus -s / as sysdba <<'SQL'
-
-        set lines 12345
-        set pages 12345
-
-        col Database_Size for a30
-        col Used_space for a30
-        col Free_space for a30
-
-        Select round(Sum(used.bytes) / 1024 / 1024 / 1024 ) || ' GB' "Database_Size",round(Sum(used.bytes) / 1024 / 1024 / 1024 ) - round(free.poo / 1024 / 1024 / 1024) || ' GB' "Used_space",round(free.poo / 1024 / 1024 / 1024) || ' GB' "Free_space" From (Select bytes From v$datafile Union      All Select bytes From v$tempfile Union  All Select bytes From v$log) used,(Select Sum(bytes) As poo From dba_free_space)free Group By free.poo ;
-        EXIT
-        SQL
-      args:
-        executable: /bin/bash
-      environment: "{{ oracle_env }}"
-      register: db_size
-      ignore_errors: true
-      changed_when: false
-
-    - name: Show DB size output
-      debug:
-        var: db_size.stdout_lines
-
     - name: Start database
       shell: |
         sqlplus -s / as sysdba <<'SQL'
