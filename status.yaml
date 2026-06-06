@@ -1,0 +1,144 @@
+- name: Oracle Database Control
+  hosts: db
+  become: true
+  become_user: oracle
+  vars:
+    db_action: status    # can be: start | stop | status | size
+  tasks:
+    - name: Get ORACLE_HOME from /etc/oratab
+      shell: "grep '^{{ oracle_sid }}:' /etc/oratab | cut -d: -f2"
+      register: oratab_home
+      changed_when: false
+
+    - name: Fail if ORACLE_HOME not found
+      fail:
+        msg: "ORACLE_HOME for SID {{ oracle_sid }} not found in /etc/oratab"
+      when: oratab_home.stdout == ""
+
+    - name: Set environment variables
+      set_fact:
+        oracle_home: "{{ oratab_home.stdout }}"
+        oracle_env:
+          ORACLE_HOME: "{{ oratab_home.stdout }}"
+          ORACLE_SID: "{{ oracle_sid }}"
+          PATH: "{{ oratab_home.stdout }}/bin:{{ ansible_env.PATH }}"
+
+    - name: Check DB status
+      shell: |
+        sqlplus -s / as sysdba <<'SQL'
+        SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
+        SELECT status FROM v$instance;
+
+        SQL
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: db_status_raw
+      ignore_errors: true
+      changed_when: false
+
+    - name: Parse DB state
+      set_fact:
+        db_state: >-
+          {% if 'OPEN' in db_status_raw.stdout %}OPEN
+          {% elif 'MOUNTED' in db_status_raw.stdout %}MOUNTED
+          {% elif 'STARTED' in db_status_raw.stdout %}STARTED
+          {% else %}DOWN{% endif %}
+
+    - name: Show current state
+      debug:
+        msg: "SID={{ oracle_sid }} is {{ db_state }}"
+
+    - name: size database
+      shell: |
+        sqlplus -s / as sysdba <<'SQL'
+
+        set lines 12345
+        set pages 12345
+
+        col Database_Size for a30
+        col Used_space for a30
+        col Free_space for a30
+
+        Select round(Sum(used.bytes) / 1024 / 1024 / 1024 ) || ' GB' "Database_Size",round(Sum(used.bytes) / 1024 / 1024 / 1024 ) - round(free.poo / 1024 / 1024 / 1024) || ' GB' "Used_space",round(free.poo / 1024 / 1024 / 1024) || ' GB' "Free_space" From (Select bytes From v$datafile Union      All Select bytes From v$tempfile Union  All Select bytes From v$log) used,(Select Sum(bytes) As poo From dba_free_space)free Group By free.poo ;
+        EXIT
+        SQL
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: db_size
+      ignore_errors: true
+      changed_when: false
+
+    - name: Show DB size output
+      debug:
+        var: db_size.stdout_lines
+
+    - name: Start database
+      shell: |
+        sqlplus -s / as sysdba <<'SQL'
+        STARTUP;
+        EXIT
+        SQL
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      when: db_action == "start" and db_state == "DOWN"
+
+    - name: Stop database
+      shell: |
+        sqlplus -s / as sysdba <<'SQL'
+        SHUTDOWN IMMEDIATE;
+        EXIT
+        SQL
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      when: db_action == "stop" and db_state != "DOWN"
+    - name: Check final DB status
+      shell: |
+        sqlplus -s / as sysdba <<'SQL'
+        SET PAGESIZE 0 FEEDBACK OFF VERIFY OFF HEADING OFF ECHO OFF
+        SELECT status FROM v$instance;
+        EXIT
+        SQL
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: final_status
+      ignore_errors: true
+      changed_when: false
+    - name: Show final state
+      debug:
+        msg: "Final state of SID={{ oracle_sid }}: {{ final_status.stdout | regex_search('(OPEN|MOUNTED|STARTED)', '\\1') | default('DOWN') }}"
+    - name: Execute provided SQL file
+      shell: sqlplus -s / as sysdba@{{ sql_file }}
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: sql_file_output
+      when:
+        - sql_file is defined
+        - sql_file | length > 0
+        - final_status.stdout is search('OPEN')
+      changed_when: false
+      failed_when: >
+        sql_file_output.rc != 0 or
+        'ORA-' in sql_file_output.stdout
+
+    - name: Show SQL file output
+      debug:
+        var: sql_file_output.stdout_lines
+      when:
+        - sql_file is defined
+        - sql_file | length > 0
+        - final_status.stdout is search('OPEN')
+      changed_when: false
+      failed_when: sql_file_output.rc != 0
+
+    - name: Show SQL file output
+      debug:
+        var: sql_file_output.stdout_lines
+      when:
+        - sql_file is defined
+        - sql_file | length > 0
