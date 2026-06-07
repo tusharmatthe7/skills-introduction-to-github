@@ -79,8 +79,9 @@
     - name: Show Listener status
       debug:
         msg: |
-          Listener is {{ listener_state }}
-          Services: {{ listener_services | join(', ') }}
+          Listener Name: {{ listener_name }}
+          Status: {{ listener_state }}
+          Services: {{ listener_services | join(', ') if listener_services else 'None' }}
 
     - name: Start Listener
       shell: |
