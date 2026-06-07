@@ -49,6 +49,50 @@
       debug:
         msg: "SID={{ oracle_sid }} is {{ db_state }}"
 
+    - name: Check Listener status
+      shell: |
+        lsnrctl status
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: listener_status_raw
+      ignore_errors: true
+      changed_when: false
+
+    - name: Parse Listener state
+      set_fact:
+        listener_state: >-
+          {% if 'LISTENER is up' in listener_status_raw.stdout %}UP
+          {% elif 'is running' in listener_status_raw.stdout %}UP
+          {% else %}DOWN{% endif %}
+        listener_services: "{{ listener_status_raw.stdout | regex_findall('Service \"([^\"]+)\"') }}"
+
+    - name: Show Listener status
+      debug:
+        msg: |
+          Listener is {{ listener_state }}
+          Services: {{ listener_services | join(', ') }}
+
+    - name: Start Listener
+      shell: |
+        lsnrctl start
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: listener_start_output
+      when: db_action == "start" and listener_state == "DOWN"
+      changed_when: "'started' in listener_start_output.stdout | lower"
+
+    - name: Stop Listener
+      shell: |
+        lsnrctl stop
+      args:
+        executable: /bin/bash
+      environment: "{{ oracle_env }}"
+      register: listener_stop_output
+      when: db_action == "stop" and listener_state == "UP"
+      changed_when: "'stopped' in listener_stop_output.stdout | lower"
+
     - name: Start database
       shell: |
         sqlplus -s / as sysdba <<'SQL'
