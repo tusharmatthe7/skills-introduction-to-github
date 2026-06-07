@@ -4,6 +4,7 @@
   become_user: oracle
   vars:
     db_action: status    # can be: start | stop | status | size
+    listener_name: "LISTENER"  # can be: LISTENER, MARS_P, LISTENER_SCAN1, etc.
   tasks:
     - name: Get ORACLE_HOME from /etc/oratab
       shell: "grep '^{{ oracle_sid }}:' /etc/oratab | cut -d: -f2"
@@ -51,21 +52,29 @@
 
     - name: Check Listener status
       shell: |
-        lsnrctl status
+        lsnrctl status {{ listener_name }} 2>&1 || true
       args:
         executable: /bin/bash
       environment: "{{ oracle_env }}"
       register: listener_status_raw
-      ignore_errors: true
+      changed_when: false
+
+    - name: Check if any tnslsnr process is running
+      shell: |
+        pgrep -f tnslsnr | wc -l
+      args:
+        executable: /bin/bash
+      register: tnslsnr_count
       changed_when: false
 
     - name: Parse Listener state
       set_fact:
         listener_state: >-
-          {% if 'LISTENER is up' in listener_status_raw.stdout %}UP
-          {% elif 'is running' in listener_status_raw.stdout %}UP
-          {% else %}DOWN{% endif %}
-        listener_services: "{{ listener_status_raw.stdout | regex_findall('Service \"([^\"]+)\"') }}"
+          {% if 'LISTENER is up' in listener_status_raw.stdout or 'is running' in listener_status_raw.stdout %}UP
+          {% elif tnslsnr_count.stdout | int > 0 %}UP
+          {% elif 'TNS-12541' in listener_status_raw.stdout or 'no listener' in listener_status_raw.stdout %}DOWN
+          {% else %}UNKNOWN{% endif %}
+        listener_services: "{{ listener_status_raw.stdout | regex_findall('Service \"([^\"]+)\"', '\\1') | default([]) }}"
 
     - name: Show Listener status
       debug:
@@ -75,7 +84,7 @@
 
     - name: Start Listener
       shell: |
-        lsnrctl start
+        lsnrctl start {{ listener_name }}
       args:
         executable: /bin/bash
       environment: "{{ oracle_env }}"
@@ -85,7 +94,7 @@
 
     - name: Stop Listener
       shell: |
-        lsnrctl stop
+        lsnrctl stop {{ listener_name }}
       args:
         executable: /bin/bash
       environment: "{{ oracle_env }}"
