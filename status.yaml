@@ -59,10 +59,18 @@
       changed_when: false
 
     - name: Show all running listeners
+      shell: |
+        ps -ef | grep -i "tnslsnr" | grep -v grep | awk '{print $(NF-1), $NF}'
+      args:
+        executable: /bin/bash
+      register: listeners_list
+      changed_when: false
+
+    - name: Display listeners list
       debug:
         msg: |
-          Available listeners:
-          {{ lookup('pipe', 'ps -ef | grep -i "tnslsnr" | grep -v grep | awk "{print $(NF-1), $NF}"') }}
+          Available Listeners:
+          {{ listeners_list.stdout }}
 
     - name: Check Listener status
       shell: |
