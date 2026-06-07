@@ -50,6 +50,20 @@
       debug:
         msg: "SID={{ oracle_sid }} is {{ db_state }}"
 
+    - name: Get list of all available listeners
+      shell: |
+        ps -ef | grep -i tnslsnr | grep -v grep | awk '{print $NF}' | head -1
+      args:
+        executable: /bin/bash
+      register: available_listeners_raw
+      changed_when: false
+
+    - name: Show all running listeners
+      debug:
+        msg: |
+          Available listeners:
+          {{ lookup('pipe', 'ps -ef | grep -i "tnslsnr" | grep -v grep | awk "{print $(NF-1), $NF}"') }}
+
     - name: Check Listener status
       shell: |
         lsnrctl status {{ listener_name }} 2>&1 || true
