@@ -29,5 +29,15 @@ This will create a tarball under the destination directory containing:
 - Oracle environment and database summary
 - Listener status and running listener processes
 
+### Run with Ansible
+
+Use the playbook below to execute `collect_artifacts.sh` on the remote host and fetch the generated artifact bundle back to the control machine.
+
+```bash
+ansible-playbook -i inventory collect_artifacts.yaml -e "oracle_sid=orcldb1 listener_name=MARS_P artifact_dir=/tmp/oracle-artifacts"
+```
+
+If your inventory file is named differently, replace `inventory` with the correct path.
+
 &copy; 2025 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
 

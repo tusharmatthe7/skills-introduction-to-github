@@ -1,0 +1,36 @@
+- name: Run artifact collection script on Oracle hosts
+  hosts: db
+  become: true
+  become_user: oracle
+  vars:
+    oracle_sid: ORCLDB1
+    listener_name: LISTENER
+    artifact_dir: /tmp/oracle-artifacts
+  tasks:
+    - name: Ensure artifact destination exists
+      file:
+        path: "{{ artifact_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Run local artifact collection script on target host
+      ansible.builtin.script: collect_artifacts.sh -s "{{ oracle_sid }}" -l "{{ listener_name }}" -d "{{ artifact_dir }}"
+      register: collect_output
+
+    - name: Show artifact script output
+      debug:
+        var: collect_output.stdout_lines
+
+    - name: Find generated artifact bundle
+      find:
+        paths: "{{ artifact_dir }}"
+        patterns: "artifact_bundle_{{ oracle_sid }}_*.tar.gz"
+        file_type: file
+      register: artifact_files
+
+    - name: Fetch artifact bundle to controller
+      fetch:
+        src: "{{ artifact_files.files[0].path }}"
+        dest: "./artifacts/"
+        flat: yes
+      when: artifact_files.matched > 0
