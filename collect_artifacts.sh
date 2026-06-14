@@ -107,6 +107,44 @@ SQL
   capture listener_processes "Listener processes" ps -ef | grep -i "${LISTENER_NAME}" | grep -v grep || true
 fi
 
+generate_html_summary() {
+  local report="$OUTPUT_DIR/artifact_summary.html"
+  html_escape() {
+    sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g;'
+  }
+
+  cat > "$report" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Oracle Artifact Summary for $ORACLE_SID</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.5; }
+    h1, h2 { color: #2a4d69; }
+    pre { background: #f8f8f8; border: 1px solid #ccc; padding: 12px; overflow-x: auto; }
+    section { margin-bottom: 30px; }
+  </style>
+</head>
+<body>
+  <h1>Oracle Artifact Summary for $ORACLE_SID</h1>
+  <p>Collected on $(date -u +'%Y-%m-%d %H:%M:%SZ') UTC</p>
+EOF
+
+  for file in "$OUTPUT_DIR"/*; do
+    [ -f "$file" ] || continue
+    [ "$(basename "$file")" = "artifact_summary.html" ] && continue
+    title=$(basename "$file" | sed 's/_/ /g')
+    printf '<section>\n  <h2>%s</h2>\n  <pre>\n' "$title" >> "$report"
+    html_escape < "$file" >> "$report"
+    printf '\n  </pre>\n</section>\n' >> "$report"
+  done
+
+  echo "</body>\n</html>" >> "$report"
+}
+
+generate_html_summary
+
 echo "End: $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$OUTPUT_DIR/collection.log"
 
 cd "$ARTIFACT_DIR"

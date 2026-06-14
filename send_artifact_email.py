@@ -43,7 +43,13 @@ def main():
     message["Subject"] = args.subject
     message["From"] = args.from_email
     message["To"] = args.to_email
-    message.set_content(args.body)
+
+    if attachment_path.suffix == ".html":
+        html_content = attachment_path.read_text(encoding="utf-8", errors="replace")
+        message.set_content(args.body)
+        message.add_alternative(html_content, subtype="html")
+    else:
+        message.set_content(args.body)
 
     with attachment_path.open("rb") as fh:
         data = fh.read()
@@ -51,6 +57,9 @@ def main():
         subtype = "octet-stream"
         if attachment_path.suffix == ".gz":
             subtype = "gzip"
+        elif attachment_path.suffix == ".html":
+            maintype = "text"
+            subtype = "html"
         message.add_attachment(
             data,
             maintype=maintype,

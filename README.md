@@ -37,13 +37,15 @@ Use the playbook below to execute `collect_artifacts.sh` on the remote host and 
 ansible-playbook -i inventory collect_artifacts.yaml -e "oracle_sid=orcldb1 listener_name=MARS_P artifact_dir=/tmp/oracle-artifacts"
 ```
 
-To also send the artifact bundle by email, set `send_email=true` and provide SMTP values:
+To also send the artifact report by email, set `send_email=true` and provide SMTP values.
+
+This will attach the generated HTML artifact summary if available.
 
 ```bash
 ansible-playbook -i inventory collect_artifacts.yaml -e "oracle_sid=orcldb1 listener_name=MARS_P artifact_dir=/tmp/oracle-artifacts send_email=true smtp_user=your@gmail.com smtp_password=APP_PASSWORD from_email=your@gmail.com"
 ```
 
-The playbook will send the bundle to `tushar.matthe7@gmail.com` by default.
+The playbook will send the report to `tushar.matthe7@gmail.com` by default.
 
 If your inventory file is named differently, replace `inventory` with the correct path.
 

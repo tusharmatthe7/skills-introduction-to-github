@@ -52,9 +52,24 @@
         flat: yes
       when: artifact_files.matched > 0
 
+    - name: Find generated HTML artifact report
+      find:
+        paths: "{{ artifact_dir }}"
+        patterns: "artifact_summary.html"
+        file_type: file
+      register: html_files
+
+    - name: Fetch HTML artifact report to controller
+      fetch:
+        src: "{{ html_files.files[0].path }}"
+        dest: "./artifacts/"
+        flat: yes
+      when: html_files.matched > 0
+
     - name: Set artifact filename for email
       set_fact:
-        artifact_filename: "{{ artifact_files.files[0].path | basename }}"
+        artifact_filename: >-
+          {{ html_files.files[0].path | basename if html_files.matched > 0 else artifact_files.files[0].path | basename }}
       when: artifact_files.matched > 0
 
     - name: Send artifact bundle by email
