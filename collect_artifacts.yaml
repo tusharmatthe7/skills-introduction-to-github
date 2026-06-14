@@ -13,9 +13,17 @@
         state: directory
         mode: '0755'
 
-    - name: Run local artifact collection script on target host
-      ansible.builtin.script: collect_artifacts.sh -s "{{ oracle_sid }}" -l "{{ listener_name }}" -d "{{ artifact_dir }}"
+    - name: Copy artifact collection script to target host
+      copy:
+        src: collect_artifacts.sh
+        dest: "{{ artifact_dir }}/collect_artifacts.sh"
+        mode: '0755'
+
+    - name: Run artifact collection script on target host
+      command: "{{ artifact_dir }}/collect_artifacts.sh -s {{ oracle_sid }} -l {{ listener_name }} -d {{ artifact_dir }}"
       register: collect_output
+      args:
+        chdir: "{{ artifact_dir }}"
 
     - name: Show artifact script output
       debug:
