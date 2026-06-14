@@ -6,6 +6,15 @@
     oracle_sid: ORCLDB1
     listener_name: LISTENER
     artifact_dir: /tmp/oracle-artifacts
+    send_email: false
+    email_recipient: tushar.matthe7@gmail.com
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    smtp_user: ""
+    smtp_password: ""
+    from_email: ""
+    email_subject: "Oracle artifacts for {{ oracle_sid }}"
+    email_body: "Please find the attached artifact bundle for Oracle SID {{ oracle_sid }}."
   tasks:
     - name: Ensure artifact destination exists
       file:
@@ -42,3 +51,25 @@
         dest: "./artifacts/"
         flat: yes
       when: artifact_files.matched > 0
+
+    - name: Set artifact filename for email
+      set_fact:
+        artifact_filename: "{{ artifact_files.files[0].path | basename }}"
+      when: artifact_files.matched > 0
+
+    - name: Send artifact bundle by email
+      delegate_to: localhost
+      shell: >
+        python3 {{ playbook_dir }}/send_artifact_email.py
+        --smtp-server "{{ smtp_server }}"
+        --smtp-port {{ smtp_port }}
+        --smtp-user "{{ smtp_user }}"
+        --smtp-password "{{ smtp_password }}"
+        --from-email "{{ from_email }}"
+        --to-email "{{ email_recipient }}"
+        --subject "{{ email_subject }}"
+        --body "{{ email_body }}"
+        --attachment "{{ playbook_dir }}/artifacts/{{ artifact_filename }}"
+      args:
+        chdir: "{{ playbook_dir }}"
+      when: send_email and artifact_files.matched > 0
