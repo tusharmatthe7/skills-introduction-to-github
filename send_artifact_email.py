@@ -19,8 +19,7 @@ def parse_args():
     parser.add_argument("--to-email", default=os.getenv("TO_EMAIL"))
     parser.add_argument("--subject", default="Oracle artifact bundle")
     parser.add_argument("--body", default="Please find the attached Oracle artifact bundle.")
-    parser.add_argument("--attachment", dest="attachment", help="Path to the artifact file to attach")
-    parser.add_argument("attachment", nargs="?", help="Path to the artifact file to attach")
+    parser.add_argument("--attachment", required=True, help="Path to the artifact file to attach")
     return parser.parse_args()
 
 
