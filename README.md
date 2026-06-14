@@ -12,5 +12,22 @@ Remember, it's self-paced so feel free to take a break! ☕️
 
 ---
 
+## Artifact collection script
+
+Use `collect_artifacts.sh` to gather OS-level and Oracle database artifacts for troubleshooting.
+
+Example:
+
+```bash
+chmod +x collect_artifacts.sh
+./collect_artifacts.sh -s ORCL -l MARS_P -d /tmp/oracle-artifacts
+```
+
+This will create a tarball under the destination directory containing:
+
+- OS information: hostname, kernel, uptime, disk, network, process list
+- Oracle environment and database summary
+- Listener status and running listener processes
+
 &copy; 2025 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
 
