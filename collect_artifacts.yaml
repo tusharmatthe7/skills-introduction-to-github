@@ -41,6 +41,7 @@
     - name: Find generated artifact bundle
       find:
         paths: "{{ artifact_dir }}"
+        recurse: yes
         patterns: "artifact_bundle_{{ oracle_sid }}_*.tar.gz"
         file_type: file
       register: artifact_files
@@ -55,6 +56,7 @@
     - name: Find generated HTML artifact report
       find:
         paths: "{{ artifact_dir }}"
+        recurse: yes
         patterns: "artifact_summary.html"
         file_type: file
       register: html_files
