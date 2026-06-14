@@ -91,7 +91,7 @@ else
   if command -v sqlplus >/dev/null 2>&1; then
     capture db_instance "Oracle instance summary" sqlplus -s / as sysdba <<'SQL'
 SET PAGESIZE 100 FEEDBACK OFF VERIFY OFF HEADING ON ECHO OFF
-SELECT instance_name, status, version, database_role, log_mode FROM v$instance;
+SELECT instance_name, status, version, database_role FROM v$instance;
 SELECT name, open_mode, log_mode FROM v$database;
 SELECT tablespace_name, status, contents, block_size FROM dba_tablespaces;
 SELECT COUNT(*) AS sessions FROM v$session;
